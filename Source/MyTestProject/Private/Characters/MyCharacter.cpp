@@ -12,7 +12,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
-AMyCharacter::AMyCharacter()
+AMyCharacter::AMyCharacter() :
+	WalkSpeed(400.f),
+	RunSpeed(600.f)
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -102,6 +104,16 @@ void AMyCharacter::Jump(const FInputActionValue& InputValue)
 	}	
 }
 
+void AMyCharacter::Running()
+{
+	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+}
+
+void AMyCharacter::StopRunning()
+{
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
 // Called every frame
 void AMyCharacter::Tick(float DeltaTime)
 {
@@ -120,6 +132,8 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		Input->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
 		Input->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 		Input->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AMyCharacter::Jump);
+		Input->BindAction(RunAction, ETriggerEvent::Triggered, this, &AMyCharacter::Running);
+		Input->BindAction(RunAction, ETriggerEvent::Completed, this, &AMyCharacter::StopRunning);
 	}
 
 }

@@ -30,6 +30,8 @@ protected:
 	void Move(const FInputActionValue& InputValue);
 	void Look(const FInputActionValue& InputValue);
 	void Jump(const FInputActionValue& InputValue);
+	void Running();
+	void StopRunning();
 
 public:	
 	// Called every frame
@@ -55,5 +57,14 @@ public:
 
 	UPROPERTY(EditAnywhere, Category= "EnhancedInput")
 	UInputAction* JumpAction;
+
+	UPROPERTY(EditAnywhere, Category= "EnhancedInput")
+	UInputAction* RunAction;
+
+	UPROPERTY(VisibleAnywhere, Category = "Movement")
+	float WalkSpeed;
+
+	UPROPERTY(VisibleAnywhere, Category = "Movement")
+	float RunSpeed;
 };
 
