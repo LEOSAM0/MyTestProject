@@ -9,7 +9,13 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "MyTestProject/Public/Weapon/MyBaseWeapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Animation/AnimMontage.h"
+#include "Components/ArrowComponent.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "Kismet/GameplayStatics.h"
+#include "Weapon/MyBaseWeapon.h"
 
 // Sets default values
 AMyCharacter::AMyCharacter() :
@@ -23,19 +29,25 @@ AMyCharacter::AMyCharacter() :
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->bUsePawnControlRotation = true;
 	//SpringArm->TargetOffset = FVector(0, 110, 90);
+	SpringArm->bInheritRoll = false;
 	SpringArm->bEnableCameraLag = true;
-	SpringArm->CameraLagSpeed = 150.f;
+	SpringArm->CameraLagSpeed = 5.f;
 	SpringArm->bEnableCameraRotationLag = true;
-	SpringArm->CameraRotationLagSpeed = 50.f;
+	SpringArm->CameraRotationLagSpeed = 5.f;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm);
 	Camera->bUsePawnControlRotation = false;
-
-	GetCharacterMovement()->JumpZVelocity = 350.f;
+	
+	GetCharacterMovement()->JumpZVelocity = 300.f;
 	GetCharacterMovement()->AirControl = 0.1f;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+
+	AnimationDelay = 0.7f;
 
 }
+
+//TODO сменить положение винтовки с "BackWeapon" на "Weapon" с анимацией (на  блюпринтах уже реализовано без анимации)
 
 // Called when the game starts or when spawned
 void AMyCharacter::BeginPlay()
@@ -52,6 +64,9 @@ void AMyCharacter::BeginPlay()
 			Subsystem->AddMappingContext(MappingContext, 0);
 		}
 	}
+	//UGameplayStatics::GetActorOfClass()
+	
+	Spawning();
 	
 }
 
@@ -89,8 +104,10 @@ void AMyCharacter::Look(const FInputActionValue& InputValue)
 void AMyCharacter::Jump(const FInputActionValue& InputValue)
 {
 	Super::Jump();
-	//ACharacter::Jump();
 	
+	ACharacter::Jump();
+
+	/* но можно и так...но так длинее, МАМА, НЕ ГОРЮЙ!!!
 	if (GetCharacterMovement()->IsMovingOnGround())
 	{
 		FVector ForwardVelocity = GetVelocity();
@@ -101,7 +118,8 @@ void AMyCharacter::Jump(const FInputActionValue& InputValue)
 		FVector JumpVelocity = ForwardVelocity + FVector(0, 0, JumpVerticalVelocity);
 
 		LaunchCharacter(JumpVelocity, true, true);
-	}	
+	}
+	*/
 }
 
 void AMyCharacter::Running()
@@ -113,6 +131,124 @@ void AMyCharacter::StopRunning()
 {
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
+
+/*-----------------------------------------------------------------------------------------------------------
+                                                EQUIP WEAPON
+// Equip Weapon */
+AActor* AMyCharacter::SpawnWeapon()
+{
+	FActorSpawnParameters SpawnParameters;
+	//SpawnParameters.Instigator = this;
+	FTransform SpawnTransform;
+	FVector SpawnVector = SpawnTransform.GetLocation();
+	AActor* WeaponSpawned = GetWorld()->SpawnActor<AMyBaseWeapon>(WeaponToSpawn, SpawnVector, FRotator::ZeroRotator, SpawnParameters);
+	return WeaponSpawned;
+}
+
+void AMyCharacter::Spawning()
+{
+	AActor* WeaponSpawned = SpawnWeapon();
+	if (WeaponSpawned == nullptr) return;
+	USceneComponent* WeaponParent = GetMesh();
+	if (WeaponParent == nullptr) return;
+	WeaponSpawned->AttachToComponent(WeaponParent, FAttachmentTransformRules::SnapToTargetIncludingScale, "BackWeapon");
+}
+
+
+// ____FLIP-FLOP____EquipUnEquiped_WEAPON
+void AMyCharacter::EquipUnEquiped()
+{
+	if (bEquipUnEquiped)
+	{
+		Equip();
+		bEquipUnEquiped = false;
+	}
+	else
+	{
+		UnEquip();
+		bEquipUnEquiped = true;
+	}
+}
+
+void AMyCharacter::EquipComponents(AActor* Comp) const
+{
+	USceneComponent* WeaponParent = GetMesh();
+	if (WeaponParent == nullptr) return;
+	Comp->AttachToComponent(WeaponParent, FAttachmentTransformRules::SnapToTargetIncludingScale, "Weapon");	
+}
+
+void AMyCharacter::EquipWeapon()
+{
+	AActor* EquipedWeapon = UGameplayStatics::GetActorOfClass(GetMesh(), WeaponToSpawn);
+	if (EquipedWeapon == nullptr) return;
+	
+	EquipComponents(EquipedWeapon);
+}
+
+void AMyCharacter::Equip()
+{
+	GEngine->AddOnScreenDebugMessage(1, 2.f, FColor::Red, "Equip");
+
+	SetIsEquippedWeapon(true);
+
+	PlayAnimMontage(EquipAnimMontage);
+
+	FTimerHandle BurnTimer;
+	GetWorld()->GetTimerManager().SetTimer(BurnTimer, this, &AMyCharacter::EquipWeapon, AnimationDelay);
+	
+}
+
+void AMyCharacter::UnEquipComponents(AActor* Comp) const
+{
+	USceneComponent* WeaponParent = GetMesh();
+	if (WeaponParent == nullptr) return;
+	Comp->AttachToComponent(WeaponParent, FAttachmentTransformRules::SnapToTargetIncludingScale, "BackWeapon");	
+}
+
+void AMyCharacter::UnEquipWeapon()
+{
+	AActor* EquipedWeapon = UGameplayStatics::GetActorOfClass(GetMesh(), WeaponToSpawn);
+	if (EquipedWeapon == nullptr) return;
+	UnEquipComponents(EquipedWeapon);	
+}
+
+void AMyCharacter::UnEquip()
+{
+	GEngine->AddOnScreenDebugMessage(1, 2.f, FColor::Red, "UnEquip");
+
+	SetIsEquippedWeapon(false);
+	
+	PlayAnimMontage(EquipAnimMontage);
+
+	FTimerHandle BurnTimer;
+	GetWorld()->GetTimerManager().SetTimer(BurnTimer, this, &AMyCharacter::UnEquipWeapon, AnimationDelay);
+}
+
+void AMyCharacter::SetIsEquippedWeapon(bool _IsEquippedWeapon)
+{
+	bIsEquipWeapon = _IsEquippedWeapon;
+}
+//===========================================================================================================
+
+// FIRE!
+
+void AMyCharacter::Fire()
+{
+	if (bIsEquipWeapon)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 2.f, FColor::Cyan, "Fire");
+		
+		if (Weapon)
+		{
+			GEngine->AddOnScreenDebugMessage(1, 2.f, FColor::Orange, "FireOPEN");
+			Weapon->SpawnBullet();
+		}
+		
+		GEngine->AddOnScreenDebugMessage(1, 2.f, FColor::Black, "FireCLOSE");
+	}
+}
+
+//========================================================================
 
 // Called every frame
 void AMyCharacter::Tick(float DeltaTime)
@@ -132,9 +268,15 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		Input->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
 		Input->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 		Input->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AMyCharacter::Jump);
-		Input->BindAction(RunAction, ETriggerEvent::Triggered, this, &AMyCharacter::Running);
+		Input->BindAction(RunAction, ETriggerEvent::Started, this, &AMyCharacter::Running);
 		Input->BindAction(RunAction, ETriggerEvent::Completed, this, &AMyCharacter::StopRunning);
-	}
 
+		// Equip Weapon
+		Input->BindAction(EquipAction, ETriggerEvent::Started, this, &AMyCharacter::EquipUnEquiped);
+
+		// SpawnBullet
+		Input->BindAction(FireAction, ETriggerEvent::Started, this, &AMyCharacter::Fire);
+		
+	}
 }
 

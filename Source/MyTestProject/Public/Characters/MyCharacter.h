@@ -11,7 +11,10 @@ class UCameraComponent;
 
 class UInputMappingContext;
 class UInputAction;
-struct FInputActionValue; 
+struct FInputActionValue;
+
+class AMyBaseWeapon;
+class UAnimMontage;
 
 UCLASS()
 class MYTESTPROJECT_API AMyCharacter : public ACharacter
@@ -33,6 +36,10 @@ protected:
 	void Running();
 	void StopRunning();
 
+	// Equip weapon
+	
+	
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -40,7 +47,7 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USpringArmComponent* SpringArm;
 
 	UPROPERTY(VisibleAnywhere)
@@ -66,5 +73,49 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Movement")
 	float RunSpeed;
+
+
+	// EquipWeapon-------------------------------------------------
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsEquipWeapon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BaseWeaponSpawn")
+	UAnimMontage* EquipAnimMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BaseWeaponSpawn")
+	UAnimMontage* UnEquipAnimMontage;
+	
+	FORCEINLINE bool IsEquippedWeapon() const { return bIsEquipWeapon; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetIsEquippedWeapon(bool _IsEquippedWeapon);
+	
+	UPROPERTY(EditAnywhere, Category= "EnhancedInput")
+	UInputAction* EquipAction;
+	
+	AActor* SpawnWeapon();
+	void EquipWeapon();
+	void UnEquipWeapon();
+	void UnEquip();
+	void Equip();
+	void EquipComponents(AActor* Comp) const;
+	void UnEquipComponents(AActor* Comp) const;
+	void Spawning();
+	
+	UPROPERTY(EditAnywhere, Category = "BaseWeaponSpawn")
+	TSubclassOf<AMyBaseWeapon> WeaponToSpawn;
+
+	UPROPERTY(EditAnywhere, Category = "BaseWeaponSpawn")
+	float AnimationDelay;
+
+	bool bEquipUnEquiped = true;
+	void EquipUnEquiped();
+	//==================================================================
+	// FIRE!
+	UPROPERTY(EditAnywhere, Category= "EnhancedInput")
+	UInputAction* FireAction;
+
+	void Fire();
+	AMyBaseWeapon* Weapon;
 };
 
